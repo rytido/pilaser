@@ -19,11 +19,18 @@ class Analysis(PiRGBAnalysis):
         x = x[:,:,1]
         d = self.x0-x
         d[self.x0<x] = 0
-        ind = np.argwhere(d>10)
-        #self.misc.append(ind.shape)
-        if ind.shape[0]>0 and ind.shape[0]<2000:
-            clust = scan.fit_predict(ind)
-            self.misc.append(np.unique(clust).shape)
+        xy = np.argwhere(d>10)
+        if xy.shape[0]>2 and xy.shape[0]<1200:
+            clust = scan.fit_predict(xy)
+            ind = clust>-1
+            clust = clust[ind]
+            xy = xy[ind]
+            denom = np.bincount(clust)
+            numerx = np.bincount(clust, xy[:,0])
+            numery = np.bincount(clust, xy[:,1])
+            xc = numerx/denom
+            yc = numery/denom
+            self.misc.append(xc)
         self.x0 = x
         self.i += 1
         if self.i % 10 == 0:
