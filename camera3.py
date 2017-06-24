@@ -1,4 +1,4 @@
-from time import sleep
+from time import sleep, time
 import numpy as np
 from picamera import PiCamera
 from picamera.array import PiRGBAnalysis
@@ -12,6 +12,7 @@ class Analysis(PiRGBAnalysis):
         self.size = size
         self.x0 = np.array(0)
         self.i = 0
+        self.t = time()
         self.misc = []
     
     def analyse(self, x):
@@ -25,23 +26,28 @@ class Analysis(PiRGBAnalysis):
             self.misc.append(np.unique(clust).shape)
         self.x0 = x
         self.i += 1
+        if self.i % 10 == 0:
+            td = time() - self.t
+            self.t += td
+            print("\r" + str(10/td), end="")
+        
 
 
-rectime = 2
+rectime = 4
 camera = PiCamera()
 output = Analysis(camera)
 camera.resolution = (640, 640)
 camera.framerate = 24
 camera.color_effects = (128,128)
-camera.start_preview()
-sleep(3)
+camera.start_preview(fullscreen=False, window = (20, 40, 640, 640))
+sleep(2)
 camera.start_recording(output, format='rgb')
 #camera.start_recording('/home/pi/video2.h264')
 camera.wait_recording(rectime)
 camera.stop_recording()
 camera.stop_preview()
         
-print("%s fps" % ((output.i+6)/rectime))
+print("\n%s fps" % ((output.i+6)/rectime))
 print(output.misc)
 
 #omxplayer -o hdmi video2.h264
