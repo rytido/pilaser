@@ -30,33 +30,53 @@ class Analysis(PiRGBAnalysis):
             numery = np.bincount(clust, xy[:,1])
             xc = numerx/denom
             yc = numery/denom
-            self.misc.append(xc)
+            #self.misc = [xc, yc]
         self.x0 = x
         self.i += 1
         if self.i % 10 == 0:
             td = time() - self.t
             self.t += td
-            print("\r" + str(10/td), end="")
+            #print("\r" + str(10/td), end="")
+            print("\r" + str(self.camera.exposure_speed), end="")
         
 
 
 rectime = 4
 camera = PiCamera()
-output = Analysis(camera)
-camera.resolution = (640, 640)
-camera.framerate = 24
+tracker = Analysis(camera)
+camera.resolution = (640, 480)
+camera.framerate = 25
 camera.color_effects = (128,128)
-camera.start_preview(fullscreen=False, window = (20, 40, 640, 640))
+camera.awb_mode = 'off'
+camera.awb_gains = (1.5, 1.5)
+camera.exposure_mode = 'night'
+camera.shutter_speed = 32000
+#camera.video_denoise = False
+
+camera.start_preview(fullscreen=False, window = (800, 40, 640, 480))
 sleep(2)
-camera.start_recording(output, format='rgb')
+camera.start_recording(tracker, format='rgb')
 #camera.start_recording('/home/pi/video2.h264')
 camera.wait_recording(rectime)
 camera.stop_recording()
 camera.stop_preview()
         
-print("\n%s fps" % ((output.i+6)/rectime))
-print(output.misc)
+print("\n%s fps" % ((tracker.i)/rectime))
+print(tracker.misc)
 
 #omxplayer -o hdmi video2.h264
-#avconv -i video.h264 -s 640x640 -q:v 1 imgs/video-%03d.jpg
+#avconv -i video2.h264 -s 640x480 -q:v 1 imgs2/v%04d.jpg
 
+"""
+import os
+from scipy.misc import imread, imshow
+ 
+path = '/home/pi/imgs2/'
+files = os.listdir(path)
+files.sort()
+
+for f in files:
+    x = imread(path+f)
+    tracker.analyse(x)
+
+"""
