@@ -5,6 +5,10 @@ from picamera.array import PiRGBAnalysis
 from sklearn.cluster import DBSCAN
 scan = DBSCAN(eps=2, min_samples=3)
 
+crosshair = np.zeros((480, 640, 3), dtype=np.uint8)
+crosshair[240, 315:326, :] = 0xff
+crosshair[235:246, 320, :] = 0xff
+
 class Analysis(PiRGBAnalysis):
     def __init__(self, camera, size=None):
         #super(PiAnalysisOutput, self).__init__()
@@ -41,7 +45,7 @@ class Analysis(PiRGBAnalysis):
         
 
 
-rectime = 4
+rectime = 5
 camera = PiCamera(resolution=(640, 480), framerate=25)
 tracker = Analysis(camera)
 camera.color_effects = (128,128)
@@ -51,11 +55,14 @@ camera.exposure_mode = 'night'
 camera.shutter_speed = 32000
 camera.video_denoise = False
 
-camera.start_preview(fullscreen=False, window = (20, 40, 640, 480))
-sleep(2)
+#fullscreen=False, window = (20, 40, 640, 480)
+camera.start_preview()
+sleep(1)
+ol = camera.add_overlay(crosshair, layer=3, alpha=64) #memoryview tobytes()
 camera.start_recording(tracker, format='rgb')
 #camera.start_recording('/home/pi/video2.h264')
 camera.wait_recording(rectime)
+camera.remove_overlay(ol)
 camera.stop_recording()
 camera.stop_preview()
 print(camera.timestamp)
