@@ -1,7 +1,7 @@
 # vim: set et sw=4 sts=4 fileencoding=utf-8:
 #
 # Python header conversion
-# Copyright (c) 2013-2017 Dave Jones <dave@waveform.org.uk>
+# Copyright (c) 2013-2015 Dave Jones <dave@waveform.org.uk>
 #
 # Original headers
 # Copyright (c) 2012, Broadcom Europe Ltd
@@ -1164,13 +1164,15 @@ class MMALPort(MMALControlPort):
             mmal_check(
                 mmal.mmal_port_send_buffer(self._port, buf._buf),
                 prefix="cannot send buffer to port %s" % self.name)
-        except PiCameraMMALError as e:
+        except AttributeError:
+            pass
+        #except PiCameraMMALError as e:
             # If port is disabled, convert exception for convenience
-            if e.status == mmal.MMAL_EINVAL and not self.enabled:
-                raise PiCameraPortDisabled(
-                    'cannot send buffer to disabled port %s' % self.name)
-            else:
-                raise
+        #    if e.status == mmal.MMAL_EINVAL and not self.enabled:
+        #        raise PiCameraPortDisabled(
+        #            'cannot send buffer to disabled port %s' % self.name)
+        #    else:
+        #        raise
 
     def flush(self):
         """
@@ -1877,8 +1879,8 @@ class MMALPool(object):
         :exc:`~picamera.PiCameraMMALError` is raised).
         """
         buf = self.get_buffer(block, timeout)
-        if buf is None:
-            raise PiCameraMMALError(mmal.MMAL_EAGAIN, 'no buffers available')
+        #if buf is None:
+        #    raise PiCameraMMALError(mmal.MMAL_EAGAIN, 'no buffers available')
         port.send_buffer(buf)
 
     def send_all_buffers(self, port, block=True, timeout=None):
