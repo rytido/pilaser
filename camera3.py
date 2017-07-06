@@ -16,8 +16,8 @@ class Analysis(PiRGBAnalysis):
         self.yc0 = np.float32(0)
         self.xc = np.float32(0)
         self.yc = np.float32(0)
-        self.xc2 = np.float32(0)
-        self.yc2 = np.float32(0)
+        self.xp = np.array(0)
+        self.yp = np.array(0)
     
     def analyse(self, x):
         x = x[:,:,1]
@@ -30,8 +30,10 @@ class Analysis(PiRGBAnalysis):
             if ind.any():
                 self.xc = xy[ind,0].mean()
                 self.yc = xy[ind,1].mean()
-                self.xc2 = 2 * self.xc - self.xc0
-                self.yc2 = 2 * self.yc - self.yc0
+                xc2 = 2 * self.xc - self.xc0
+                yc2 = 2 * self.yc - self.yc0
+                self.xp = np.linspace(self.xc0,xc2,10)
+                self.yp = np.linspace(self.yc0,yc2,10)
                 self.xc0 = self.xc
                 self.yc0 = self.yc
         self.x0 = x   
@@ -57,18 +59,32 @@ ol = camera.add_overlay(crosshair, layer=3, alpha=25)
 #memoryview tobytes()
 
 hist = [[5,5]] * 25
+xp0 = 0
+yp0 = 0
 try:
     while True:
         xc = int(tracker.xc.round(0))
         yc = int(tracker.yc.round(0))
+        xp = tracker.xp.round(0).astype(np.int16)
+        yp = tracker.yp.round(0).astype(np.int16)
         if xc!=hist[-1][0] or yc!=hist[-1][1]:
             crosshair[xc, (yc-3):(yc+4), 1] = 0xff
             crosshair[(xc-3):(xc+4), yc, 1] = 0xff
+            try:
+                crosshair[xp,yp] = 0xff
+            except IndexError:
+                pass
+            try:
+                crosshair[xp0,yp0] = 0
+            except IndexError:
+                pass
             ol.update(crosshair)
             xc0,yc0 = hist.pop(0)
             crosshair[xc0, (yc0-3):(yc0+4), 1] = 0
             crosshair[(xc0-3):(xc0+4), yc0, 1] = 0
             hist.append([xc,yc])
+            xp0 = xp
+            yp0 = yp
         sleep(.05)
 except KeyboardInterrupt:
     pass
