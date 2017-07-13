@@ -36,8 +36,8 @@ class Analysis(PiRGBAnalysis):
             else:
                 self.stableCounter += 1
                 self.bgsum += x
-                if self.stableCounter >= 20:
-                    self.background = (self.bgsum/20).round(0).astype(np.uint8)
+                if self.stableCounter == 20:
+                    self.background = (self.bgsum/self.stableCounter).round(0).astype(np.uint8)
                     self.stableCounter = 0
                     self.bgsum = 0
                     self.calibrationMode = False
@@ -48,19 +48,25 @@ class Analysis(PiRGBAnalysis):
             d = self.background-x
             d[self.background<x] = 0        
             xy = np.argwhere(d>25)
-            if xy.shape[0]>2 and xy.shape[0]<500:
-                clust = scan.fit_predict(xy)
-                ind = clust==0
-                if ind.any():
-                    self.xc = xy[ind,0].mean()
-                    self.yc = xy[ind,1].mean()
-                    xc2 = 2 * self.xc - self.xc0
-                    yc2 = 2 * self.yc - self.yc0
-                    self.xp = np.linspace(self.xc0,xc2,10)
-                    self.yp = np.linspace(self.yc0,yc2,10)
-                    self.xc0 = self.xc
-                    self.yc0 = self.yc
-            self.i += 1
+            if xy.shape[0]>500:
+                self.unstableCounter += 1
+                if self.unstableCounter>60:
+                    self.calibrationMode = True
+                    self.unstableCounter = 0
+            else:
+                if xy.shape[0]>2:
+                    clust = scan.fit_predict(xy)
+                    ind = clust==0
+                    if ind.any():
+                        self.xc = xy[ind,0].mean()
+                        self.yc = xy[ind,1].mean()
+                        xc2 = 2 * self.xc - self.xc0
+                        yc2 = 2 * self.yc - self.yc0
+                        self.xp = np.linspace(self.xc0,xc2,10)
+                        self.yp = np.linspace(self.yc0,yc2,10)
+                        self.xc0 = self.xc
+                        self.yc0 = self.yc
+        self.i += 1
             #print("\r" + str(10/td), end="")
 
 camera = PiCamera(resolution=(640, 480), framerate=20)
