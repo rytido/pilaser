@@ -18,27 +18,50 @@ class Analysis(PiRGBAnalysis):
         self.yc = np.float32(0)
         self.xp = np.array(0)
         self.yp = np.array(0)
+        self.calibrationMode = True
+        self.stableCounter = 0
+        self.unstableCounter = 0
+        self.bgsum = np.zeros((480, 640), dtype=np.int32)
+        self.background = np.array(0, dtype=np.uint8)
     
     def analyse(self, x):
         x = x[:,:,1]
-        d = self.x0-x
-        d[self.x0<x] = 0
-        xy = np.argwhere(d>25)
-        if xy.shape[0]>2 and xy.shape[0]<1000:
-            clust = scan.fit_predict(xy)
-            ind = clust==0
-            if ind.any():
-                self.xc = xy[ind,0].mean()
-                self.yc = xy[ind,1].mean()
-                xc2 = 2 * self.xc - self.xc0
-                yc2 = 2 * self.yc - self.yc0
-                self.xp = np.linspace(self.xc0,xc2,10)
-                self.yp = np.linspace(self.yc0,yc2,10)
-                self.xc0 = self.xc
-                self.yc0 = self.yc
-        self.x0 = x   
-        self.i += 1
-        #print("\r" + str(10/td), end="")
+        
+        if self.calibrationMode:            
+            d = self.x0-x
+            d[self.x0<x] = 0
+            if np.any(d>25):
+                self.stableCounter = 0
+                self.bgsum = 0
+            else:
+                self.stableCounter += 1
+                self.bgsum += x
+                if self.stableCounter >= 20:
+                    self.background = (self.bgsum/20).round(0).astype(np.uint8)
+                    self.stableCounter = 0
+                    self.bgsum = 0
+                    self.calibrationMode = False
+                    print(self.background.mean(), x.mean())
+            self.x0 = x
+                    
+        else:
+            d = self.background-x
+            d[self.background<x] = 0        
+            xy = np.argwhere(d>25)
+            if xy.shape[0]>2 and xy.shape[0]<500:
+                clust = scan.fit_predict(xy)
+                ind = clust==0
+                if ind.any():
+                    self.xc = xy[ind,0].mean()
+                    self.yc = xy[ind,1].mean()
+                    xc2 = 2 * self.xc - self.xc0
+                    yc2 = 2 * self.yc - self.yc0
+                    self.xp = np.linspace(self.xc0,xc2,10)
+                    self.yp = np.linspace(self.yc0,yc2,10)
+                    self.xc0 = self.xc
+                    self.yc0 = self.yc
+            self.i += 1
+            #print("\r" + str(10/td), end="")
 
 camera = PiCamera(resolution=(640, 480), framerate=20)
 camera.awb_mode = 'off'
@@ -51,6 +74,7 @@ camera.video_denoise = False
 
 #fullscreen=False, window=(0,0,640,480)
 camera.start_preview()
+sleep(1)
 tracker = Analysis(camera)
 camera.start_recording(tracker, format='rgb')
 
@@ -58,33 +82,42 @@ crosshair = np.zeros((480, 640, 3), dtype=np.uint8)
 ol = camera.add_overlay(crosshair, layer=3, alpha=25) 
 #memoryview tobytes()
 
-hist = [[5,5]] * 25
-xp0 = 0
-yp0 = 0
+hist = [[5,5]] * 30
+textPresent = False
+#xp0 = 0
+#yp0 = 0
 try:
     while True:
+        if textPresent:
+            if not tracker.calibrationMode:
+                camera.annotate_text = None
+                textPresent = False
+        else:
+            if tracker.calibrationMode:
+                camera.annotate_text = "Calibrating background"
+                textPresent = True
         xc = int(tracker.xc.round(0))
         yc = int(tracker.yc.round(0))
-        xp = tracker.xp.round(0).astype(np.int16)
-        yp = tracker.yp.round(0).astype(np.int16)
+        #xp = tracker.xp.round(0).astype(np.int16)
+        #yp = tracker.yp.round(0).astype(np.int16)
         if xc!=hist[-1][0] or yc!=hist[-1][1]:
             crosshair[xc, (yc-3):(yc+4), 1] = 0xff
             crosshair[(xc-3):(xc+4), yc, 1] = 0xff
-            try:
-                crosshair[xp,yp] = 0xff
-            except IndexError:
-                pass
-            try:
-                crosshair[xp0,yp0] = 0
-            except IndexError:
-                pass
+            #try:
+            #    crosshair[xp,yp] = 0xff
+            #except IndexError:
+            #    pass
+            #try:
+            #    crosshair[xp0,yp0] = 0
+            #except IndexError:
+            #    pass
             ol.update(crosshair)
             xc0,yc0 = hist.pop(0)
             crosshair[xc0, (yc0-3):(yc0+4), 1] = 0
             crosshair[(xc0-3):(xc0+4), yc0, 1] = 0
             hist.append([xc,yc])
-            xp0 = xp
-            yp0 = yp
+            #xp0 = xp
+            #yp0 = yp
         sleep(.05)
 except KeyboardInterrupt:
     pass
