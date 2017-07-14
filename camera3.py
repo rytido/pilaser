@@ -18,44 +18,34 @@ class Analysis(PiRGBAnalysis):
         self.yc = np.float32(0)
         self.xp = np.array(0)
         self.yp = np.array(0)
-        self.calibrationMode = True
+        self.calibrationMode = False
         self.stableCounter = 0
         self.unstableCounter = 0
-        self.bgsum = np.zeros((480, 640), dtype=np.uint16)
-        self.background = np.zeros((480, 640), dtype=np.uint8)
     
     def analyse(self, x):
         x = x[:,:,1]
-        #print(x[240:244,200:204])
+        d = self.x0-x
+        d[self.x0<x] = 0
+
         if self.calibrationMode:            
-            d = self.x0-x
-            d[self.x0<x] = 0
-            if np.any(d>20):
+            if np.any(d>30):
                 self.stableCounter = 0
-                self.bgsum = np.zeros((480, 640), dtype=np.uint16)
             else:
                 self.stableCounter += 1
-                #self.bgsum += x
-                if self.stableCounter == 20:
-                    self.background = x#(self.bgsum/self.stableCounter).round(0).astype(np.uint8)
+                if self.stableCounter == 30:
                     self.stableCounter = 0
-                    self.bgsum = np.zeros((480, 640), dtype=np.uint16)
                     self.calibrationMode = False
-            #self.x0 = x
+                    #camera.annotate_text = None
                     
-        else:
-            d3 = self.x0-x
-            d3[self.x0<x] = 0        
-            d2 = self.background-x
-            d2[self.background<x] = 0        
-            xy = np.argwhere(d2>50)
-            if xy.shape[0]>500:
-                self.unstableCounter += 1
-                if self.unstableCounter>60:
-                    self.calibrationMode = True
-                    self.unstableCounter = 0
-                    #print('---')
-                    print(self.background[d2>50],self.x0[d2>50],x[d2>50])
+        else:     
+            xy = np.argwhere(d>25)
+            if xy.shape[0]>600:
+                #self.unstableCounter += 1
+                #if self.unstableCounter>10:
+                self.calibrationMode = True
+                print("Tracker disabled")
+                #camera.annotate_text = "Tracker disabled"                
+                    #self.unstableCounter = 0
             elif xy.shape[0]>2:
                 clust = scan.fit_predict(xy)
                 ind = clust==0
@@ -68,8 +58,8 @@ class Analysis(PiRGBAnalysis):
                     self.yp = np.linspace(self.yc0,yc2,10)
                     self.xc0 = self.xc
                     self.yc0 = self.yc
-        self.i += 1
         self.x0 = x
+        self.i += 1
             #print("\r" + str(10/td), end="")
 
 camera = PiCamera(resolution=(640, 480), framerate=20)
@@ -97,15 +87,7 @@ textPresent = False
 #yp0 = 0
 try:
     while True:
-        if tracker.calibrationMode:
-            if not textPresent:
-                camera.annotate_text = "Calibrating background"
-                textPresent = True
-        else:
-            if textPresent:
-                camera.annotate_text = None
-                textPresent = False
-
+        if not tracker.calibrationMode:
             xc = int(tracker.xc.round(0))
             yc = int(tracker.yc.round(0))
             #xp = tracker.xp.round(0).astype(np.int16)
