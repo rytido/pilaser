@@ -6,7 +6,7 @@ from sklearn.cluster import DBSCAN
 scan = DBSCAN(eps=2, min_samples=3, metric='euclidean', algorithm='ball_tree', leaf_size=30) 
 
 def printr(s):
-    print("\r" + s + "      ", end="")
+    print("\r" + s + "       ", end="")
 
 class Analysis(PiRGBAnalysis):
     def __init__(self, camera, size=None):
@@ -37,7 +37,7 @@ class Analysis(PiRGBAnalysis):
             else:
                 self.stableCounter += 1
                 self.bgsum += x
-                if self.stableCounter == 20:
+                if self.stableCounter == 30:
                     self.background = (self.bgsum/self.stableCounter).round(0).astype(np.uint8)
                     self.stableCounter = 0
                     self.bgsum = np.zeros((480, 640), dtype=np.uint16)
@@ -48,11 +48,12 @@ class Analysis(PiRGBAnalysis):
         else: 
             d = self.background-x
             d[self.background<x] = 0        
-            xy = np.argwhere(d>60)
-            if xy.shape[0]>999:
+            dcount = np.count_nonzero(d>80)
+            if dcount>999:
                 self.calibrationMode = True
                 printr("calibrating")
-            elif xy.shape[0]>4:
+            elif dcount>4:
+                xy = np.argwhere(d>80)
                 clust = scan.fit_predict(xy)
                 ind = clust==0
                 if ind.sum()>1: #ind.any()
@@ -71,14 +72,13 @@ class Analysis(PiRGBAnalysis):
 camera = PiCamera(resolution=(640, 480), framerate=20)
 camera.awb_mode = 'off'
 camera.awb_gains = (1.2, 1.2)
-camera.iso = 400 # 400 500 640 800
+#camera.iso = 400 # 400 500 640 800
 camera.color_effects = (128,128)
 camera.exposure_mode = 'sports'
 camera.shutter_speed = 12000
-camera.video_denoise = False
+camera.video_denoise = True
 
-#fullscreen=False, window=(0,0,640,480)
-camera.start_preview()
+camera.start_preview(fullscreen=False, window=(160,0,640,480))
 sleep(1)
 printr("calibrating")
 tracker = Analysis(camera)
