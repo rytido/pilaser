@@ -18,34 +18,37 @@ class Analysis(PiRGBAnalysis):
         self.yc = np.float32(0)
         self.xp = np.array(0)
         self.yp = np.array(0)
-        self.calibrationMode = False
+        self.calibrationMode = True
         self.stableCounter = 0
-        self.unstableCounter = 0
+        self.bgsum = np.zeros((480, 640), dtype=np.uint16)
+        self.background = np.zeros((480, 640), dtype=np.uint8)
     
     def analyse(self, x):
         x = x[:,:,1]
-        d = self.x0-x
-        d[self.x0<x] = 0
-
         if self.calibrationMode:            
-            if np.any(d>30):
+            d = self.x0-x
+            d[self.x0<x] = 0
+            if np.any(d>20):
                 self.stableCounter = 0
+                self.bgsum = np.zeros((480, 640), dtype=np.uint16)
             else:
                 self.stableCounter += 1
-                if self.stableCounter == 30:
+                self.bgsum += x
+                if self.stableCounter == 20:
+                    self.background = (self.bgsum/self.stableCounter).round(0).astype(np.uint8)
                     self.stableCounter = 0
+                    self.bgsum = np.zeros((480, 640), dtype=np.uint16)
                     self.calibrationMode = False
-                    #camera.annotate_text = None
+                    print("done")
+            self.x0 = x
                     
-        else:     
-            xy = np.argwhere(d>25)
-            if xy.shape[0]>600:
-                #self.unstableCounter += 1
-                #if self.unstableCounter>10:
+        else: 
+            d = self.background-x
+            d[self.background<x] = 0        
+            xy = np.argwhere(d>20)
+            if xy.shape[0]>900:
                 self.calibrationMode = True
-                print("Tracker disabled")
-                #camera.annotate_text = "Tracker disabled"                
-                    #self.unstableCounter = 0
+                print("calibrating")
             elif xy.shape[0]>2:
                 clust = scan.fit_predict(xy)
                 ind = clust==0
@@ -58,9 +61,9 @@ class Analysis(PiRGBAnalysis):
                     self.yp = np.linspace(self.yc0,yc2,10)
                     self.xc0 = self.xc
                     self.yc0 = self.yc
-        self.x0 = x
         self.i += 1
-            #print("\r" + str(10/td), end="")
+        #self.x0 = x
+        #print("\r" + str(10/td), end="")
 
 camera = PiCamera(resolution=(640, 480), framerate=20)
 camera.awb_mode = 'off'
@@ -74,6 +77,7 @@ camera.video_denoise = False
 #fullscreen=False, window=(0,0,640,480)
 camera.start_preview()
 sleep(1)
+print("calibrating")
 tracker = Analysis(camera)
 camera.start_recording(tracker, format='rgb')
 
@@ -82,7 +86,6 @@ ol = camera.add_overlay(crosshair, layer=3, alpha=25)
 #memoryview tobytes()
 
 hist = [[5,5]] * 30
-textPresent = False
 #xp0 = 0
 #yp0 = 0
 try:
