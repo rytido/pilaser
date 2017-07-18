@@ -3,7 +3,7 @@ import numpy as np
 from picamera import PiCamera
 from picamera.array import PiRGBAnalysis
 from sklearn.cluster import DBSCAN
-scan = DBSCAN(eps=2, min_samples=3, metric='euclidean', algorithm='ball_tree', leaf_size=30) 
+scan = DBSCAN(eps=2, min_samples=3, metric='euclidean', algorithm='ball_tree', leaf_size=30)
 
 def printr(s):
     print("\r" + s + "       ", end="")
@@ -48,12 +48,12 @@ class Analysis(PiRGBAnalysis):
         else: 
             d = self.background-x
             d[self.background<x] = 0        
-            dcount = np.count_nonzero(d>80)
-            if dcount>999:
+            xy = np.where((d>80).ravel())[0]
+            if xy.shape[0]>999:
                 self.calibrationMode = True
                 printr("calibrating")
-            elif dcount>4:
-                xy = np.argwhere(d>80)
+            elif xy.shape[0]>4:
+                xy = np.transpose(np.unravel_index(xy, d.shape))
                 clust = scan.fit_predict(xy)
                 ind = clust==0
                 if ind.sum()>1: #ind.any()
