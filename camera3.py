@@ -24,14 +24,12 @@ class Analysis(PiRGBAnalysis):
         self.calibrationMode = True
         self.stableCounter = 0
         self.bgsum = np.zeros((480, 640), dtype=np.uint16)
-        self.background = np.zeros((480, 640), dtype=np.uint8)
+        self.background = np.array(0)
     
     def analyse(self, x):
         x = x[:,:,1]
-        if self.calibrationMode:            
-            d = self.x0-x
-            d[self.x0<x] = 0
-            if np.any(d>50):
+        if self.calibrationMode:
+            if np.any((self.x0>x) & (self.x0-x>50)):
                 self.stableCounter = 0
                 self.bgsum = np.zeros((480, 640), dtype=np.uint16)
             else:
@@ -46,9 +44,8 @@ class Analysis(PiRGBAnalysis):
             self.x0 = x
                     
         else: 
-            d = self.background-x
-            d[self.background<x] = 0        
-            xy = np.where((d>80).ravel())[0]
+            d = (self.background>x) & (self.background-x>80)
+            xy = np.where(d.ravel())[0]
             if xy.shape[0]>999:
                 self.calibrationMode = True
                 printr("calibrating")
