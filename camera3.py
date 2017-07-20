@@ -15,14 +15,11 @@ class Analysis(PiRGBAnalysis):
         self.i = 0
         self.xc0 = np.float32(0)
         self.yc0 = np.float32(0)
-        self.xc = np.float32(0)
-        self.yc = np.float32(0)
-        self.xp = np.array(0)
-        self.yp = np.array(0)
         self.calibrationMode = True
         self.stableCounter = 0
         self.bgsum = np.zeros((480, 640), dtype=np.uint16)
         self.bg = np.array(0)
+        self.iSinceAction = 0
         self.t0 = self.camera.timestamp
     
     def analyse(self, x):
@@ -46,22 +43,32 @@ class Analysis(PiRGBAnalysis):
             d = (self.bg>x) & (self.bg-x>80)
             xy = np.where(d.ravel())[0]
             if xy.shape[0]>999:
+                #laseroff
+                self.iSinceAction = 99
                 self.calibrationMode = True
                 printr("calibrating")
             elif xy.shape[0]>4:
+                if self.iSinceAction>30:
+                    #laseron
+                    self.iSinceAction=0
                 xy = np.transpose(np.unravel_index(xy, d.shape))
                 clust = scan.fit_predict(xy)
                 ind = clust==0
                 if ind.sum()>1:
-                    self.xc = xy[ind,0].mean()
-                    self.yc = xy[ind,1].mean()
-                    xc2 = 2 * self.xc - self.xc0
-                    yc2 = 2 * self.yc - self.yc0
-                    #self.xp = np.linspace(self.xc0,xc2,10)
-                    #self.yp = np.linspace(self.yc0,yc2,10)
-                    self.xc0 = self.xc
-                    self.yc0 = self.yc
-                    printr("%s %s" % (int(self.xc.round()), int(self.yc.round())))
+                    xc = xy[ind,0].mean()
+                    yc = xy[ind,1].mean()
+                    xc2 = 2 * xc - self.xc0
+                    yc2 = 2 * yc - self.yc0
+                    #xp = np.linspace(self.xc0,xc2,10)
+                    #yp = np.linspace(self.yc0,yc2,10)
+                    self.xc0 = xc
+                    self.yc0 = yc
+                    printr("%s %s" % (int(xc.round()), int(yc.round())))
+            else:
+                self.iSinceAction+=1
+                if self.iSinceAction>30:
+                    #laseroff
+                    printr('standby')
         self.i += 1
 
 camera = PiCamera(resolution=(640, 480), framerate=20)
