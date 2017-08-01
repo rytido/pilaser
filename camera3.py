@@ -3,6 +3,9 @@ from picamera import PiCamera
 from picamera.array import PiRGBAnalysis
 from sklearn.cluster import DBSCAN
 scan = DBSCAN(eps=2, min_samples=3, metric='euclidean', algorithm='ball_tree', leaf_size=30)
+import RPi.GPIO as GPIO
+GPIO.setmode(GPIO.BCM)
+GPIO.setup(26, GPIO.OUT)
 
 def printr(s):
     print("\r" + s + "       ", end="")
@@ -44,13 +47,11 @@ class Analysis(PiRGBAnalysis):
             xy = np.where(d.ravel())[0]
             if xy.shape[0]>999:
                 #laseroff
+                GPIO.output(26, 0)
                 self.iSinceAction = 99
                 self.calibrationMode = True
                 printr("calibrating")
             elif xy.shape[0]>4:
-                if self.iSinceAction>30:
-                    #laseron
-                    self.iSinceAction=0
                 xy = np.transpose(np.unravel_index(xy, d.shape))
                 clust = scan.fit_predict(xy)
                 ind = clust==0
@@ -64,10 +65,15 @@ class Analysis(PiRGBAnalysis):
                     self.xc0 = xc
                     self.yc0 = yc
                     printr("%s %s" % (int(xc.round()), int(yc.round())))
+                if self.iSinceAction>30:
+                    #laseron
+                    GPIO.output(26, 1)
+                    self.iSinceAction=0
             else:
                 self.iSinceAction+=1
                 if self.iSinceAction>30:
                     #laseroff
+                    GPIO.output(26, 0)
                     printr('standby')
         self.i += 1
 
