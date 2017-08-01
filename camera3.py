@@ -97,6 +97,7 @@ try:
 except KeyboardInterrupt:
     pass
 
+GPIO.cleanup()
 camera.stop_recording()
 camera.stop_preview()
 print("%s frames" % tracker.i)
