@@ -2,10 +2,15 @@ import numpy as np
 from picamera import PiCamera
 from picamera.array import PiRGBAnalysis
 from sklearn.cluster import DBSCAN
+from binascii import unhexlify, hexlify
+
 scan = DBSCAN(eps=2, min_samples=3, metric='euclidean', algorithm='ball_tree', leaf_size=30)
-import RPi.GPIO as GPIO
-GPIO.setmode(GPIO.BCM)
-GPIO.setup(26, GPIO.OUT)
+#import RPi.GPIO as GPIO
+#GPIO.setmode(GPIO.BCM)
+#GPIO.setup(26, GPIO.OUT)
+
+def tohex(v):
+    return unhexlify("%0.4X" % (v+4096))
 
 def printr(s):
     print("\r" + s + "       ", end="")
@@ -47,7 +52,7 @@ class Analysis(PiRGBAnalysis):
             xy = np.where(d.ravel())[0]
             if xy.shape[0]>999:
                 #laseroff
-                GPIO.output(26, 0)
+                #GPIO.output(26, 0)
                 self.iSinceAction = 99
                 self.calibrationMode = True
                 printr("calibrating")
@@ -62,18 +67,22 @@ class Analysis(PiRGBAnalysis):
                     yc2 = 2 * yc - self.yc0
                     #xp = np.linspace(self.xc0,xc2,10)
                     #yp = np.linspace(self.yc0,yc2,10)
+                    xint= int(xc.round())
+                    yint = int(yc.round())
+                    open('/dev/spidev0.0', 'wb').write(tohex(1900-xint*3))
+                    open('/dev/spidev0.1', 'wb').write(tohex(1900-yint*3))
                     self.xc0 = xc
                     self.yc0 = yc
-                    printr("%s %s" % (int(xc.round()), int(yc.round())))
+                    printr("%s %s" % (xint, yint))
                 if self.iSinceAction>30:
                     #laseron
-                    GPIO.output(26, 1)
+                    #GPIO.output(26, 1)
                     self.iSinceAction=0
             else:
                 self.iSinceAction+=1
                 if self.iSinceAction>30:
                     #laseroff
-                    GPIO.output(26, 0)
+                    #GPIO.output(26, 0)
                     printr('standby')
         self.i += 1
 
@@ -97,7 +106,7 @@ try:
 except KeyboardInterrupt:
     pass
 
-GPIO.cleanup()
+#GPIO.cleanup()
 camera.stop_recording()
 camera.stop_preview()
 print("%s frames" % tracker.i)
