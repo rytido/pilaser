@@ -2,42 +2,32 @@ from subprocess import call
 from time import sleep
 from binascii import unhexlify, hexlify
 
-def tohex(int_value):
-    data_ = format(int_value, 'x')
-    result = data_.rjust(4, '0')
-    hexed = unhexlify(result)
-    return hexed
+def tohex(v):
+    return unhexlify("%0.4X" % (v+4096))
 
-t = r'echo"\x00\x00" > /dev/spidev0.0'
+t = r'echo -ne "\x00\x00" > /dev/spidev0.0'
 
-a = tohex(0)
-b = tohex(100)
-c = tohex(200)
+open('/dev/spidev0.0', 'wb').write(b'\x10\x00')
+open('/dev/spidev0.0', 'wb').write(tohex(0))
+#range seems to be x10x00 to x17xFF
 
-l = [b"\x00\x00",
-    b"\x38\xFF",
-    b"\x16 \026",
-    b"\x3d \075",
-    b"\x7f \177",    
-    b"\x3F\xFF"]
-
-
+j=48
+t=.001
+open('/dev/spidev0.0', 'wb').write(tohex(0))
+open('/dev/spidev0.1', 'wb').write(tohex(0))
+l1 = range(0, 2048, j)
+l2 = reversed(l1)
 while True:
-    for v in l:
-        with open('/dev/spidev0.0', 'wb') as f:
-            f.write(v)
-        sleep(.01)
-    for v in l:
-        with open('/dev/spidev0.1', 'wb') as f:
-            f.write(v)
-        sleep(.01)
-    for v in reversed(l):
-        with open('/dev/spidev0.0', 'wb') as f:
-            f.write(v)
-        sleep(.01)
-    for v in reversed(l):
-        with open('/dev/spidev0.1', 'wb') as f:
-            f.write(v)
-        sleep(.01)     
-    
+    for x in range(0, 2048, j):
+        open('/dev/spidev0.0', 'wb').write(tohex(x))
+        sleep(t)
+    for x in range(0, 2048, j):
+        open('/dev/spidev0.1', 'wb').write(tohex(x))
+        sleep(t)
+    for x in reversed(range(0, 2048, j)):
+        open('/dev/spidev0.0', 'wb').write(tohex(x))
+        sleep(t)                
+    for x in reversed(range(0, 2048, j)):
+        open('/dev/spidev0.1', 'wb').write(tohex(x))
+        sleep(t)    
 
