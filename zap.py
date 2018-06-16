@@ -29,7 +29,7 @@ class Analysis(PiRGBAnalysis):
         self.background = np.array(0)
         self.inaction_counter = 0
         self.t0 = self.camera.timestamp
-    
+
     def analyse(self, z):
         z = z[:,:,1]
         if self.calibration_mode:
@@ -39,15 +39,15 @@ class Analysis(PiRGBAnalysis):
             else:
                 self.stable_counter += 1
                 self.background_sum += z
-                if self.stable_counter == 30:
+                if self.stable_counter == 10:
                     self.background = (self.background_sum/self.stable_counter).round(0).astype(np.uint8)
                     self.stable_counter = 0
                     self.background_sum = np.zeros((480, 640), dtype=np.uint16)
                     self.calibration_mode = False
                     printr("done")
             self.z0 = z
-                    
-        else: 
+
+        else:
             d = (self.background>z) & (self.background-z>80)
             xy = np.where(d.ravel())[0]
             if xy.shape[0]>999:

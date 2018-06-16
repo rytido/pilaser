@@ -34,7 +34,7 @@ class Analysis(PiRGBAnalysis):
         self.campoints = []
         self.x_vals = []
         self.y_vals = []
-    
+
     def analyse(self, z):
         z = z[:,:,1]
         if self.calibration_mode:
@@ -51,8 +51,8 @@ class Analysis(PiRGBAnalysis):
                     self.calibration_mode = False
                     printr("done")
             self.z0 = z
-                    
-        else: 
+
+        else:
             d = (z>self.background) & (z-self.background>80)
             xy = np.where(d.ravel())[0]
             if xy.shape[0]>999:
@@ -70,7 +70,7 @@ class Analysis(PiRGBAnalysis):
                     self.campoints.append([xint, yint])
                     self.x_vals.append(self.laser_xi)
                     self.y_vals.append(self.laser_yi)
-                    
+
                     if self.laser_xi < self.npoints - 1:
                         self.laser_xi += 1
                     elif self.laser_yi < self.npoints - 1:
