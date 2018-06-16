@@ -21,8 +21,8 @@ class Analysis(PiRGBAnalysis):
         self.size = size
         self.z0 = np.array(0)
         self.i = 0
-        self.xc0 = np.float32(0)
-        self.yc0 = np.float32(0)
+        #self.xc0 = np.float32(0)
+        #self.yc0 = np.float32(0)
         self.calibration_mode = True
         self.stable_counter = 0
         self.background_sum = np.zeros((480, 640), dtype=np.uint16)
@@ -63,16 +63,16 @@ class Analysis(PiRGBAnalysis):
                 if ind.sum()>1:
                     xc = xy[ind,0].mean()
                     yc = xy[ind,1].mean()
-                    xc2 = 2 * xc - self.xc0
-                    yc2 = 2 * yc - self.yc0
+                    #xc2 = 2 * xc - self.xc0
+                    #yc2 = 2 * yc - self.yc0
                     #xp = np.linspace(self.xc0,xc2,10)
                     #yp = np.linspace(self.yc0,yc2,10)
                     xint = int(xc.round())
                     yint = int(yc.round())
                     open('/dev/spidev0.0', 'wb').write(tohex(1900-xint*3))
                     open('/dev/spidev0.1', 'wb').write(tohex(1900-yint*3))
-                    self.xc0 = xc
-                    self.yc0 = yc
+                    #self.xc0 = xc
+                    #self.yc0 = yc
                     printr("%s %s" % (xint, yint))
                 if self.inaction_counter>30:
                     #laseron
