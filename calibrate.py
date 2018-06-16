@@ -30,18 +30,21 @@ class Analysis(PiRGBAnalysis):
         self.npoints = self.laser_cal_points.shape[0]
         self.laser_xi = 0
         self.laser_yi = 0
+        self.x_inc = 1
+        self.y_inc = 1
         self.campoints = []
         self.x_vals = []
         self.y_vals = []
 
     def analyse(self, z):
         z = z[:,:,1]
-        d = (z>self.z0) & (z-self.z0>80)
+        d = (z>self.z0) & (z-self.z0>40)
         self.z0 = z
         xy = np.where(d.ravel())[0]
         if xy.shape[0]>999:
-            self.laser_xi = 0
-            self.laser_yi = 0
+            pass
+            #self.laser_xi = 0
+            #self.laser_yi = 0
         elif xy.shape[0]>4:
             xy = np.transpose(np.unravel_index(xy, d.shape))
             clust = scan.fit_predict(xy)
@@ -54,19 +57,22 @@ class Analysis(PiRGBAnalysis):
                 self.campoints.append([xint, yint])
                 self.x_vals.append(self.laser_xi)
                 self.y_vals.append(self.laser_yi)
-
-                if self.laser_xi < self.npoints - 1:
-                    self.laser_xi += 1
-                elif self.laser_yi < self.npoints - 1:
-                    self.laser_xi = 0
-                    self.laser_yi += 1
-                else:
-                    self.camera.stop_recording()
-                laser_x = self.laser_cal_points[self.laser_xi]
-                laser_y = self.laser_cal_points[self.laser_yi]
-                open('/dev/spidev0.0', 'wb').write(tohex(laser_x))
-                open('/dev/spidev0.1', 'wb').write(tohex(laser_y))
                 printr("%s %s" % (xint, yint))
+
+        if self.laser_xi > 0 and self.laser_xi < self.npoints - 1:
+            self.laser_xi += self.x_inc
+        else:
+            self.x_inc = -1 * self.x_inc
+        if self.laser_yi < self.npoints - 1:
+            self.laser_yi += self.y_inc
+        else:
+            self.laser_xi = 0
+            self.laser_yi = 0
+            #self.camera.stop_recording()
+        laser_x = self.laser_cal_points[self.laser_xi]
+        laser_y = self.laser_cal_points[self.laser_yi]
+        open('/dev/spidev0.0', 'wb').write(tohex(laser_x))
+        open('/dev/spidev0.1', 'wb').write(tohex(laser_y))
 
 camera = PiCamera(resolution=(640, 480), framerate=10)
 camera.awb_mode = 'off'
@@ -78,7 +84,6 @@ camera.shutter_speed = 12000
 camera.video_denoise = True
 
 camera.start_preview(fullscreen=False, window=(160,0,640,480))
-printr("calibrating")
 tracker = Analysis(camera)
 camera.start_recording(tracker, format='rgb')
 #camera.start_recording('/home/pi/video2.h264')
