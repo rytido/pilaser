@@ -19,7 +19,7 @@ class Analysis(PiRGBAnalysis):
     def __init__(self, camera, size=None):
         self.camera = camera
         self.size = size
-        self.x0 = np.array(0)
+        self.z0 = np.array(0)
         self.i = 0
         self.xc0 = np.float32(0)
         self.yc0 = np.float32(0)
@@ -30,25 +30,25 @@ class Analysis(PiRGBAnalysis):
         self.inaction_counter = 0
         self.t0 = self.camera.timestamp
     
-    def analyse(self, x):
-        x = x[:,:,1]
+    def analyse(self, z):
+        z = z[:,:,1]
         if self.calibration_mode:
-            if np.any((self.x0>x) & (self.x0-x>50)):
+            if np.any((self.z0>z) & (self.z0-z>50)):
                 self.stable_counter = 0
                 self.background_sum = np.zeros((480, 640), dtype=np.uint16)
             else:
                 self.stable_counter += 1
-                self.background_sum += x
+                self.background_sum += z
                 if self.stable_counter == 30:
                     self.background = (self.background_sum/self.stable_counter).round(0).astype(np.uint8)
                     self.stable_counter = 0
                     self.background_sum = np.zeros((480, 640), dtype=np.uint16)
                     self.calibration_mode = False
                     printr("done")
-            self.x0 = x
+            self.z0 = z
                     
         else: 
-            d = (self.background>x) & (self.background-x>80)
+            d = (self.background>z) & (self.background-z>80)
             xy = np.where(d.ravel())[0]
             if xy.shape[0]>999:
                 #laseroff
@@ -67,7 +67,7 @@ class Analysis(PiRGBAnalysis):
                     yc2 = 2 * yc - self.yc0
                     #xp = np.linspace(self.xc0,xc2,10)
                     #yp = np.linspace(self.yc0,yc2,10)
-                    xint= int(xc.round())
+                    xint = int(xc.round())
                     yint = int(yc.round())
                     open('/dev/spidev0.0', 'wb').write(tohex(1900-xint*3))
                     open('/dev/spidev0.1', 'wb').write(tohex(1900-yint*3))
