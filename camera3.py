@@ -23,38 +23,38 @@ class Analysis(PiRGBAnalysis):
         self.i = 0
         self.xc0 = np.float32(0)
         self.yc0 = np.float32(0)
-        self.calibrationMode = True
-        self.stableCounter = 0
-        self.bgsum = np.zeros((480, 640), dtype=np.uint16)
-        self.bg = np.array(0)
-        self.iSinceAction = 0
+        self.calibration_mode = True
+        self.stable_counter = 0
+        self.background_sum = np.zeros((480, 640), dtype=np.uint16)
+        self.background = np.array(0)
+        self.inaction_counter = 0
         self.t0 = self.camera.timestamp
     
     def analyse(self, x):
         x = x[:,:,1]
-        if self.calibrationMode:
+        if self.calibration_mode:
             if np.any((self.x0>x) & (self.x0-x>50)):
-                self.stableCounter = 0
-                self.bgsum = np.zeros((480, 640), dtype=np.uint16)
+                self.stable_counter = 0
+                self.background_sum = np.zeros((480, 640), dtype=np.uint16)
             else:
-                self.stableCounter += 1
-                self.bgsum += x
-                if self.stableCounter == 30:
-                    self.bg = (self.bgsum/self.stableCounter).round(0).astype(np.uint8)
-                    self.stableCounter = 0
-                    self.bgsum = np.zeros((480, 640), dtype=np.uint16)
-                    self.calibrationMode = False
+                self.stable_counter += 1
+                self.background_sum += x
+                if self.stable_counter == 30:
+                    self.background = (self.background_sum/self.stable_counter).round(0).astype(np.uint8)
+                    self.stable_counter = 0
+                    self.background_sum = np.zeros((480, 640), dtype=np.uint16)
+                    self.calibration_mode = False
                     printr("done")
             self.x0 = x
                     
         else: 
-            d = (self.bg>x) & (self.bg-x>80)
+            d = (self.background>x) & (self.background-x>80)
             xy = np.where(d.ravel())[0]
             if xy.shape[0]>999:
                 #laseroff
                 #GPIO.output(26, 0)
-                self.iSinceAction = 99
-                self.calibrationMode = True
+                self.inaction_counter = 99
+                self.calibration_mode = True
                 printr("calibrating")
             elif xy.shape[0]>4:
                 xy = np.transpose(np.unravel_index(xy, d.shape))
@@ -74,13 +74,13 @@ class Analysis(PiRGBAnalysis):
                     self.xc0 = xc
                     self.yc0 = yc
                     printr("%s %s" % (xint, yint))
-                if self.iSinceAction>30:
+                if self.inaction_counter>30:
                     #laseron
                     #GPIO.output(26, 1)
-                    self.iSinceAction=0
+                    self.inaction_counter=0
             else:
-                self.iSinceAction+=1
-                if self.iSinceAction>30:
+                self.inaction_counter+=1
+                if self.inaction_counter>30:
                     #laseroff
                     #GPIO.output(26, 0)
                     printr('standby')
