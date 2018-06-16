@@ -25,10 +25,15 @@ class Analysis(PiRGBAnalysis):
         self.stable_counter = 0
         self.background_sum = np.zeros((480, 640), dtype=np.uint16)
         self.background = np.array(0)
-        self.campoints = np.zeros((480, 640), dtype=np.uint16)
+        #self.campoints = np.zeros((480, 640), dtype=np.uint16)
+        #self.campoints[:] = numpy.nan
         self.laser_cal_points = np.append(np.arange(0, 2048, 256), 2047)
+        self.npoints = self.laser_cal_points.shape[0]
         self.laser_xi = 0
         self.laser_yi = 0
+        self.campoints = []
+        self.x_vals = []
+        self.y_vals = []
     
     def analyse(self, z):
         z = z[:,:,1]
@@ -62,14 +67,24 @@ class Analysis(PiRGBAnalysis):
                     yc = xy[ind,1].mean()
                     xint = int(xc.round())
                     yint = int(yc.round())
-                    self.laser_xi += 1
+                    self.campoints.append([xint, yint])
+                    self.x_vals.append(self.laser_xi)
+                    self.y_vals.append(self.laser_yi)
+                    
+                    if self.laser_xi < self.npoints - 1:
+                        self.laser_xi += 1
+                    elif self.laser_yi < self.npoints - 1:
+                        self.laser_xi = 0
+                        self.laser_yi += 1
+                    else:
+                        self.camera.stop_recording()
                     laser_x = self.laser_cal_points[self.laser_xi]
                     laser_y = self.laser_cal_points[self.laser_yi]
                     open('/dev/spidev0.0', 'wb').write(tohex(laser_x))
                     open('/dev/spidev0.1', 'wb').write(tohex(laser_y))
                     printr("%s %s" % (xint, yint))
 
-camera = PiCamera(resolution=(640, 480), framerate=20)
+camera = PiCamera(resolution=(640, 480), framerate=10)
 camera.awb_mode = 'off'
 camera.awb_gains = (1.2, 1.2)
 #camera.iso = 400 # 400 500 640 800
@@ -93,10 +108,6 @@ except KeyboardInterrupt:
 camera.stop_recording()
 camera.stop_preview()
 
-
-campoints = np.array([[500,300],[500,290],[500,280],[490,300],[490,290],[490,280]])
-x_vals = np.array([0, 0, 0, 128, 128, 128])
-y_vals = np.array([0, 128, 256, 0, 128, 256])
 
 grid_x, grid_y = np.mgrid[0:640, 0:480]
 
