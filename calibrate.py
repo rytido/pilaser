@@ -4,6 +4,8 @@ from picamera.array import PiRGBAnalysis
 from sklearn.cluster import DBSCAN
 from binascii import unhexlify, hexlify
 from scipy.interpolate import griddata
+import os
+from hipsterplot import plot
 
 scan = DBSCAN(eps=2, min_samples=3, metric='euclidean', algorithm='ball_tree', leaf_size=30)
 #import RPi.GPIO as GPIO
@@ -30,15 +32,15 @@ class Analysis(PiRGBAnalysis):
         self.npoints = self.laser_cal_points.shape[0]
         self.laser_xi = 0
         self.laser_yi = 0
-        self.x_inc = 1
-        self.y_inc = 1
+        self.x_inc = -1
+        self.inc_change = False
         self.campoints = []
         self.x_vals = []
         self.y_vals = []
 
     def analyse(self, z):
         z = z[:,:,1]
-        d = (z>self.z0) & (z-self.z0>40)
+        d = (z>self.z0) & (z-self.z0>25)
         self.z0 = z
         xy = np.where(d.ravel())[0]
         if xy.shape[0]>999:
@@ -57,14 +59,21 @@ class Analysis(PiRGBAnalysis):
                 self.campoints.append([xint, yint])
                 self.x_vals.append(self.laser_xi)
                 self.y_vals.append(self.laser_yi)
-                printr("%s %s" % (xint, yint))
+                #printr("%s %s" % (xint, yint))
+                os.system('clear')
+                x_plot = np.concatenate(([0,600], xy[:,0]))
+                y_plot = np.concatenate(([0,600], 600-xy[:,1]))
+                plot(y_plot, x_plot, 20, 20)
 
         if self.laser_xi > 0 and self.laser_xi < self.npoints - 1:
             self.laser_xi += self.x_inc
-        else:
+        elif self.inc_change:
             self.x_inc = -1 * self.x_inc
-        if self.laser_yi < self.npoints - 1:
-            self.laser_yi += self.y_inc
+            self.laser_xi += self.x_inc
+            self.inc_change = False
+        elif self.laser_yi < self.npoints - 1:
+            self.laser_yi += 1
+            self.inc_change = True
         else:
             self.laser_xi = 0
             self.laser_yi = 0
@@ -74,7 +83,7 @@ class Analysis(PiRGBAnalysis):
         open('/dev/spidev0.0', 'wb').write(tohex(laser_x))
         open('/dev/spidev0.1', 'wb').write(tohex(laser_y))
 
-camera = PiCamera(resolution=(640, 480), framerate=10)
+camera = PiCamera(resolution=(640, 480), framerate=3)
 camera.awb_mode = 'off'
 camera.awb_gains = (1.2, 1.2)
 #camera.iso = 400 # 400 500 640 800
